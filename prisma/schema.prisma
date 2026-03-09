@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  CUSTOMER
+  KITCHEN_OWNER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  DELIVERED
+  CANCELLED
+}
+
+enum MenuCategory {
+  STARTER
+  MAIN
+  DESSERT
+  BEVERAGE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(CUSTOMER)
+  phone        String?
+  address      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  kitchens CloudKitchen[]
+  orders   Order[]
+  ratings  Rating[]
+}
+
+model CloudKitchen {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  cuisine     String
+  address     String
+  phone       String
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  menuItems MenuItem[]
+  orders    Order[]
+}
+
+model MenuItem {
+  id          String       @id @default(cuid())
+  name        String
+  description String
+  price       Float
+  category    MenuCategory
+  imageUrl    String?
+  isAvailable Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  kitchenId String
+  kitchen   CloudKitchen @relation(fields: [kitchenId], references: [id], onDelete: Cascade)
+
+  orderItems OrderItem[]
+  ratings    Rating[]
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  status          OrderStatus @default(PENDING)
+  totalAmount     Float
+  stripePaymentId String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  customerId String
+  customer   User   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  kitchenId String
+  kitchen   CloudKitchen @relation(fields: [kitchenId], references: [id], onDelete: Cascade)
+
+  items   OrderItem[]
+  ratings Rating[]
+}
+
+model OrderItem {
+  id       String @id @default(cuid())
+  quantity Int
+  price    Float
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+}
+
+model Rating {
+  id        String   @id @default(cuid())
+  score     Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  customerId String
+  customer   User   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, menuItemId, orderId])
+}
